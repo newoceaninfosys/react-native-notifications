@@ -22,6 +22,25 @@ NSString* const RNNotificationReceivedBackground = @"RNNotificationReceivedBackg
 NSString* const RNNotificationOpened = @"RNNotificationOpened";
 NSString* const RNNotificationActionTriggered = @"RNNotificationActionTriggered";
 
+#if !TARGET_OS_TV
+@implementation RCTConvert (NSCalendarUnit)
+
+RCT_ENUM_CONVERTER(NSCalendarUnit,
+                   (@{
+                      @"year": @(NSCalendarUnitYear),
+                      @"month": @(NSCalendarUnitMonth),
+                      @"weekOfYear": @(NSCalendarUnitWeekOfYear),
+                      @"week": @(NSCalendarUnitWeekday),
+                      @"day": @(NSCalendarUnitDay),
+                      @"hour": @(NSCalendarUnitHour),
+                      @"minute": @(NSCalendarUnitMinute)
+                      }),
+                   0,
+                   integerValue)
+
+@end
+#endif
+
 /*
  * Converters for Interactive Notifications
  */
@@ -94,6 +113,7 @@ RCT_ENUM_CONVERTER(UIUserNotificationActionBehavior, (@{
     notification.alertBody = [RCTConvert NSString:details[@"alertBody"]];
     notification.alertTitle = [RCTConvert NSString:details[@"alertTitle"]];
     notification.alertAction = [RCTConvert NSString:details[@"alertAction"]];
+    notification.repeatInterval = [RCTConvert NSCalendarUnit:details[@"repeatInterval"]];
     notification.soundName = [RCTConvert NSString:details[@"soundName"]] ?: UILocalNotificationDefaultSoundName;
     if ([RCTConvert BOOL:details[@"silent"]]) {
         notification.soundName = nil;
@@ -125,14 +145,32 @@ RCT_ENUM_CONVERTER(UIUserNotificationActionBehavior, (@{
     NSDate *triggerDate = [RCTConvert NSDate:details[@"fireDate"]];
     UNCalendarNotificationTrigger *trigger = nil;
     if (triggerDate != nil) {
+        BOOL repeats = [RCTConvert BOOL:details[@"repeats"]];
+        NSCalendarUnit repeatInterval = [RCTConvert NSCalendarUnit:details[@"repeatInterval"]];
+        switch(repeatInterval) {
+            case NSCalendarUnitMinute:
+                repeatInterval = NSCalendarUnitSecond;
+                break;
+            case NSCalendarUnitHour:
+                repeatInterval = NSCalendarUnitMinute;
+                break;
+            case NSCalendarUnitDay:
+                repeatInterval = NSCalendarUnitMinute + NSCalendarUnitHour;
+                break;
+            case NSCalendarUnitMonth:
+                repeatInterval = NSCalendarUnitMinute + NSCalendarUnitHour + NSCalendarUnitDay;
+                break;
+            case NSCalendarUnitYear:
+                repeatInterval = NSCalendarUnitMinute + NSCalendarUnitHour +
+                         NSCalendarUnitDay + NSCalendarUnitMonth;
+                break;
+        }
+
         NSDateComponents *triggerDateComponents = [[NSCalendar currentCalendar]
-                                                   components:NSCalendarUnitYear +
-                                                   NSCalendarUnitMonth + NSCalendarUnitDay +
-                                                   NSCalendarUnitHour + NSCalendarUnitMinute +
-                                                   NSCalendarUnitSecond + NSCalendarUnitTimeZone
+                                                   components: repeatInterval
                                                    fromDate:triggerDate];
         trigger = [UNCalendarNotificationTrigger triggerWithDateMatchingComponents:triggerDateComponents
-                                                                           repeats:NO];
+                                                                           repeats:repeats];
     }
 
     return [UNNotificationRequest requestWithIdentifier:notificationId
@@ -214,8 +252,7 @@ RCT_EXPORT_MODULE()
                                                object:nil];
 
     [RNNotificationsBridgeQueue sharedInstance].openedRemoteNotification = [_bridge.launchOptions objectForKey:UIApplicationLaunchOptionsRemoteNotificationKey];
-    UILocalNotification *localNotification = [_bridge.launchOptions objectForKey:UIApplicationLaunchOptionsLocalNotificationKey];
-    [RNNotificationsBridgeQueue sharedInstance].openedLocalNotification = localNotification ? localNotification.userInfo : nil;
+    [RNNotificationsBridgeQueue sharedInstance].openedLocalNotification = [_bridge.launchOptions objectForKey:UIApplicationLaunchOptionsLocalNotificationKey];
 }
 
 /*
@@ -580,10 +617,17 @@ RCT_EXPORT_METHOD(consumeBackgroundQueue)
     }];
 
     // Push opened local notifications
-    NSDictionary* openedLocalNotification = [RNNotificationsBridgeQueue sharedInstance].openedLocalNotification;
+    UILocalNotification* openedLocalNotification = [RNNotificationsBridgeQueue sharedInstance].openedLocalNotification;
     if (openedLocalNotification) {
+        UIApplicationState state = [UIApplication sharedApplication].applicationState;
+    
+        NSMutableDictionary* newUserInfo = openedLocalNotification.userInfo.mutableCopy;
+        [newUserInfo removeObjectForKey:@"__id"];
+        openedLocalNotification.userInfo = newUserInfo;
+
         [RNNotificationsBridgeQueue sharedInstance].openedLocalNotification = nil;
-        [RNNotifications didNotificationOpen:openedLocalNotification];
+        // [RNNotifications didNotificationOpen:openedLocalNotification];
+        [RNNotifications didNotificationOpen:openedLocalNotification.userInfo];
     }
 
     // Push opened remote notifications
