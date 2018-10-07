@@ -1,5 +1,5 @@
 {
-  "name": "react-native-notifications",
+  "name": "@nois/react-native-notifications",
   "version": "1.1.21",
   "description": "Advanced Push Notifications (Silent, interactive notifications) for iOS & Android",
   "author": "Lidan Hifi <lidan.hifi@gmail.com>",
@@ -41,8 +41,8 @@
     "sinon-chai": "^2.8.0"
   },
   "scripts": {
-    "pretest": "./node_modules/.bin/eslint *.js test",
-    "test": "./node_modules/.bin/mocha --compilers js:babel-register --reporter spec \"test/*.spec.js\"",
+    "pretest": "eslint *.js test",
+    "test": "mocha --compilers js:babel-register --reporter spec \"test/*.spec.js\"",
     "start": "npm run test --silent; ./node_modules/.bin/chokidar \"test/*.js\" \"*.js\" -c 'npm run test --silent' --silent"
   },
   "publishConfig": {
@@ -50,7 +50,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/wix/react-native-notifications.git"
+    "url": "git+https://github.com/wix/react-native-notifications.git"
   },
   "homepage": "https://github.com/wix/react-native-notifications",
   "bugs": {
@@ -60,5 +60,10 @@
     "presets": [
       "react-native"
     ]
+  },
+  "directories": {
+    "doc": "docs",
+    "example": "example",
+    "test": "test"
   }
 }
