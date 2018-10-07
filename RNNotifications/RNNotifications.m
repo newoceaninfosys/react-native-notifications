@@ -144,9 +144,13 @@ RCT_ENUM_CONVERTER(UIUserNotificationActionBehavior, (@{
 
     NSDate *triggerDate = [RCTConvert NSDate:details[@"fireDate"]];
     UNCalendarNotificationTrigger *trigger = nil;
-    if (triggerDate != nil) {
-        BOOL repeats = [RCTConvert BOOL:details[@"repeats"]];
-        NSCalendarUnit repeatInterval = [RCTConvert NSCalendarUnit:details[@"repeatInterval"]];
+  
+    NSCalendarUnit repeatInterval = [RCTConvert NSCalendarUnit:details[@"repeatInterval"]];
+
+    if (triggerDate != nil &&
+        details[@"repeatInterval"] != (NSString *)[NSNull null] &&
+        details[@"repeatInterval"] != (id)[NSNull null] &&
+        details[@"repeatInterval"] != nil) {
         switch(repeatInterval) {
             case NSCalendarUnitMinute:
                 repeatInterval = NSCalendarUnitSecond;
@@ -165,12 +169,21 @@ RCT_ENUM_CONVERTER(UIUserNotificationActionBehavior, (@{
                          NSCalendarUnitDay + NSCalendarUnitMonth;
                 break;
         }
-
+        
         NSDateComponents *triggerDateComponents = [[NSCalendar currentCalendar]
                                                    components: repeatInterval
                                                    fromDate:triggerDate];
         trigger = [UNCalendarNotificationTrigger triggerWithDateMatchingComponents:triggerDateComponents
-                                                                           repeats:repeats];
+                                                                               repeats:YES];
+    } else {
+        NSDateComponents *triggerDateComponents = [[NSCalendar currentCalendar]
+                                                   components:NSCalendarUnitYear +
+                                                   NSCalendarUnitMonth + NSCalendarUnitDay +
+                                                   NSCalendarUnitHour + NSCalendarUnitMinute +
+                                                   NSCalendarUnitSecond + NSCalendarUnitTimeZone
+                                                   fromDate:triggerDate];
+        trigger = [UNCalendarNotificationTrigger triggerWithDateMatchingComponents:triggerDateComponents
+                                                                           repeats:NO];
     }
 
     return [UNNotificationRequest requestWithIdentifier:notificationId
