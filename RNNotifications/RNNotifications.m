@@ -147,8 +147,7 @@ RCT_ENUM_CONVERTER(UIUserNotificationActionBehavior, (@{
   
     NSCalendarUnit repeatInterval = [RCTConvert NSCalendarUnit:details[@"repeatInterval"]];
 
-    if (triggerDate != nil &&
-        details[@"repeatInterval"] != (NSString *)[NSNull null] &&
+    if (triggerDate != nil && details[@"repeatInterval"] != (NSString *)[NSNull null] &&
         details[@"repeatInterval"] != (id)[NSNull null] &&
         details[@"repeatInterval"] != nil) {
         switch(repeatInterval) {
